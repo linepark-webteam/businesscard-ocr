@@ -19,11 +19,14 @@ interface MulterRequest extends Express.Request {
 }
 
 router.post(
-  '/',
+    '/',
   upload.single('image'),
-  async (req: MulterRequest, res) => {
+  async (req, res) => {
     try {
-      const { originalname, buffer, mimetype } = req.file;
+      // 型アサーションして file にアクセス
+      const file = (req as MulterRequest).file!;
+      const { originalname, buffer, mimetype } = file;
+
       const timestamp = Date.now();
       const gcsName = `${timestamp}_${originalname}`;
 
