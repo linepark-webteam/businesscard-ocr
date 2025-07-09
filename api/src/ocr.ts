@@ -49,7 +49,9 @@ router.post(
       });
     } catch (err: any) {
       console.error(err);
-      res.status(500).json({ error: err.message });
+      res
+    .status(500)
+    .json({ error: err.message, stack: err.stack });
     }
   }
 );
