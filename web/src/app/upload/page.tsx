@@ -1,7 +1,7 @@
 // src/app/upload/page.tsx
-export const dynamic = 'force-dynamic'; 
-
 'use client';
+
+export const dynamic = 'force-dynamic'; 
 
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
