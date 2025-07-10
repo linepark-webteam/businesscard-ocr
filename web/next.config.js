@@ -2,7 +2,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
+
   // ブラウザからの /api/ocr リクエストを Cloud Run 側の本番 URL に転送する
   async rewrites() {
     return [

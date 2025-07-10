@@ -5,10 +5,11 @@ import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import Image from 'next/image';
 
+// OCR API から返ってくるページ情報は型定義できる範囲で unknown[] とします
 interface OcrResult {
   file: string;
   text: string;
-  pages: any[];
+  pages: unknown[];
 }
 
 export default function UploadPage() {
@@ -34,24 +35,39 @@ export default function UploadPage() {
     setLoading(true);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL;
-      if (!API_URL) throw new Error('NEXT_PUBLIC_API_URL が設定されていません');
+      if (!API_URL) {
+        throw new Error('NEXT_PUBLIC_API_URL が設定されていません');
+      }
 
       const resps = await Promise.all(
         files.map(async (file) => {
           const form = new FormData();
           form.append('image', file);
+
           const res = await fetch(`${API_URL}/ocr`, {
             method: 'POST',
             body: form,
           });
-          if (!res.ok) throw new Error(`Upload failed for ${file.name}`);
-          return (await res.json()) as OcrResult;
+
+          if (!res.ok) {
+            throw new Error(`Upload failed for ${file.name}`);
+          }
+
+          const data = (await res.json()) as OcrResult;
+          return data;
         })
       );
+
       setResults(resps);
-    } catch (err: any) {
-      console.error(err);
-      alert(err.message);
+    } catch (error: unknown) {
+      // unknown → Error に絞り込んで扱う
+      if (error instanceof Error) {
+        console.error(error.message);
+        alert(error.message);
+      } else {
+        console.error(error);
+        alert('予期しないエラーが発生しました');
+      }
     } finally {
       setLoading(false);
     }
