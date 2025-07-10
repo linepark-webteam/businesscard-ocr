@@ -1,9 +1,8 @@
 // web/next.config.js
 /** @type {import('next').NextConfig} */
 module.exports = {
-  reactStrictMode: true,       // ← これだけでも OK
-  // output: 'export',          // 静的 HTML にしたいならコメント解除
-  // trailingSlash: true,       // ↑ を使う場合は true 推奨
+  reactStrictMode: true,
+  trailingSlash: true,
   async rewrites() {
     return [
       {
