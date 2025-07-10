@@ -1,10 +1,9 @@
+// web/next.config.js
+
 /** @type {import('next').NextConfig} */
 module.exports = {
   reactStrictMode: true,
-  output: 'export',
-  trailingSlash: true,
-  // export モードでは Next が自動で `out/` に書き出す
-  // → distDir は触らない！
+
   async rewrites() {
     return [
       {
