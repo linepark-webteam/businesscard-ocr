@@ -49,12 +49,17 @@ export default function UploadClient() {
         })
       );
       setResults(resArr);
-    } catch (e: any) {
-      alert(e.message ?? 'upload error');
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
+} catch (e: unknown) {                 // ← any → unknown
+  if (e instanceof Error) {
+    alert(e.message);
+    console.error(e);
+  } else {
+    alert('予期しないエラーが発生しました');
+    console.error(e);
+  }
+} finally {
+  setLoading(false);
+}
   };
 
   /* ---------- UI ---------- */
