@@ -1,3 +1,6 @@
+// src/app/upload/page.tsx
+export const dynamic = 'force-dynamic'; 
+
 'use client';
 
 import React, { useState, useCallback } from 'react';
