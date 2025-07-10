@@ -1,22 +1,21 @@
-// src/app/upload/page.tsx
 'use client';
 
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import Image from 'next/image';
 
-// OCR API から返ってくるページ情報は型定義できる範囲で unknown[] とします
+// OCR API から返ってくる結果の型定義
 interface OcrResult {
   file: string;
   text: string;
-  pages: unknown[];
+  pages: unknown[]; // 型安全のため any[] を unknown[] に変更
 }
 
 export default function UploadPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [results, setResults] = useState<OcrResult[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
 
   const onDrop = useCallback((accepted: File[]) => {
     const newPreviews = accepted.map((file) => URL.createObjectURL(file));
@@ -39,7 +38,7 @@ export default function UploadPage() {
         throw new Error('NEXT_PUBLIC_API_URL が設定されていません');
       }
 
-      const resps = await Promise.all(
+      const responses = await Promise.all(
         files.map(async (file) => {
           const form = new FormData();
           form.append('image', file);
@@ -58,9 +57,8 @@ export default function UploadPage() {
         })
       );
 
-      setResults(resps);
+      setResults(responses);
     } catch (error: unknown) {
-      // unknown → Error に絞り込んで扱う
       if (error instanceof Error) {
         console.error(error.message);
         alert(error.message);
@@ -121,11 +119,7 @@ export default function UploadPage() {
         <div key={idx} className="mb-8">
           <h2 className="font-semibold mb-2">{r.file}</h2>
           <pre
-            className="
-              bg-white dark:bg-gray-800
-              text-black dark:text-gray-100
-              p-4 rounded whitespace-pre-wrap
-            "
+            className="bg-white dark:bg-gray-800 text-black dark:text-gray-100 p-4 rounded whitespace-pre-wrap"
           >
             {r.text}
           </pre>
