@@ -1,6 +1,5 @@
 // src/app/upload/page.tsx
-export const runtime = 'edge'; // or dynamic='force-dynamic'
-
+export const runtime = 'edge';   // または dynamic='force-dynamic'
 import UploadClient from './UploadClient';
 
 export default function UploadPage() {
