@@ -2,7 +2,8 @@
 /** @type {import('next').NextConfig} */
 module.exports = {
   reactStrictMode: true,
-  trailingSlash: true,
+  output: 'export',      // ★ 追加
+  trailingSlash: true,   // ★ 既に追加済み
   async rewrites() {
     return [
       {
