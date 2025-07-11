@@ -9,15 +9,15 @@ import axios from "axios";
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-// 環境変数読み込み
+// 環境変数チェック
 const keyJson = JSON.parse(process.env.VISION_SERVICE_ACCOUNT_KEY!);
 const projectId = keyJson.project_id;
 const BUCKET = process.env.BUCKET_NAME!;
 const OPENAI_KEY = process.env.OPENAI_API_KEY!;
 const STEIN_ENDPOINT = process.env.STEIN_ENDPOINT!;
-const STEIN_KEY = process.env.STEIN_API_KEY!;
+const STEIN_API_KEY = process.env.STEIN_API_KEY!;
 
-// GCS/Vision クライアント初期化
+// Storage/Vision クライアント初期化
 const storage = new Storage({ credentials: keyJson, projectId });
 const visionClient = new vision.ImageAnnotatorClient({
   credentials: keyJson,
@@ -27,103 +27,68 @@ const visionClient = new vision.ImageAnnotatorClient({
 // OpenAI クライアント初期化
 const openai = new OpenAIApi(new Configuration({ apiKey: OPENAI_KEY }));
 
-// GPT function calling 用スキーマ
-const parseBusinessCard = {
-  name: "parse_business_card",
-  description: "名刺OCRの結果を構造化して返します",
-  parameters: {
-    type: "object",
-    properties: {
-      name: { type: "string", description: "氏名" },
-      kana: { type: "string", description: "フリガナ" },
-      tel: {
-        type: "array",
-        items: { type: "string" },
-        description: "電話番号リスト",
-      },
-      mail: {
-        type: "array",
-        items: { type: "string" },
-        description: "メールアドレスリスト",
-      },
-      company: { type: "string", description: "会社名" },
-      industry: { type: "string", description: "業種" },
-      position: { type: "string", description: "役職" },
-    },
-    required: ["name"],
-  },
-};
+interface MulterRequest extends Request {
+  file: Express.Multer.File;
+}
 
 router.post(
   "/",
   upload.single("image"),
   async (req: Request, res: Response) => {
     try {
-      // --- 1) Cloud Storage にアップロード ---
-      const file = req.file!;
-      const timestamp = Date.now();
-      const gcsName = `${timestamp}_${file.originalname}`;
+      const file = (req as MulterRequest).file!;
+      const { originalname, buffer, mimetype } = file;
+      const timestamp = new Date().toISOString();
+      const gcsName = `${Date.now()}_${originalname}`;
+
+      // 1) Cloud Storage にアップロード
       await storage
         .bucket(BUCKET)
         .file(gcsName)
-        .save(file.buffer, { resumable: false, contentType: file.mimetype });
+        .save(buffer, { resumable: false, contentType: mimetype });
 
-      // --- 2) Vision API で OCR ---
-      const [visResp] = await visionClient.documentTextDetection(
+      // 2) Vision API OCR
+      const [result] = await visionClient.documentTextDetection(
         `gs://${BUCKET}/${gcsName}`
       );
-      const rawText = visResp.fullTextAnnotation?.text || "";
+      const text = result.fullTextAnnotation?.text?.trim() || "";
 
-      // --- 3) GPT 関数呼び出しで構造化 ---
+      // 3) GPT で構造化
       const messages: ChatCompletionRequestMessage[] = [
         {
           role: "system",
           content:
-            "以下は名刺OCRの結果のテキストです。JSON 形式に構造化してください。",
+            `You are a parser that extracts business card information from OCR text.\n
+Extract the following fields:\n` +
+            `name (Kanji), kana (Katakana), position, company, address, tel, fax, email, website.\n` +
+            `Respond with JSON only, with keys: name, kana, position, company, address, tel, fax, email, website.`,
         },
-        { role: "user", content: rawText },
+        { role: "user", content: text },
       ];
-      const chat = await openai.createChatCompletion({
-        model: "gpt-4o-mini",
+
+      const gptRes = await openai.createChatCompletion({
+        model: "gpt-3.5-turbo",
         messages,
-        functions: [parseBusinessCard],
-        function_call: { name: parseBusinessCard.name },
+        temperature: 0.0,
       });
-      const fnCall = chat.data.choices[0].message!.function_call!;
-      const parsed = JSON.parse(fnCall.arguments!) as {
-        name: string;
-        kana?: string;
-        tel?: string[];
-        mail?: string[];
-        company?: string;
-        industry?: string;
-        position?: string;
-      };
+      const structured = JSON.parse(gptRes.data.choices[0].message!.content);
 
-      // --- 4) Stein API へ書き込み ---
+      // 4) Stein に保存
+      // Sheet の各カラムに合わせ、timestamp など追記
       const record = {
-        timestamp: new Date().toISOString(),
-        name: parsed.name,
-        kana: parsed.kana ?? "",
-        tel: (parsed.tel ?? []).join(","),
-        mail: (parsed.mail ?? []).join(","),
-        company: parsed.company ?? "",
-        industry: parsed.industry ?? "",
-        position: parsed.position ?? "",
-        raw_json: JSON.stringify(parsed),
+        timestamp,
+        ...structured,
+        raw_json: JSON.stringify({ file: gcsName, text }),
       };
-      await axios.post(process.env.STEIN_ENDPOINT!, record, {
-        auth: {
-          username: process.env.STEIN_AUTH_USERNAME!,
-          password: process.env.STEIN_AUTH_PASSWORD!,
-        },
+      await axios.post(STEIN_ENDPOINT, [record], {
+        headers: { Authorization: `Bearer ${STEIN_API_KEY}` },
       });
 
-      // --- 5) クライアントに返却 ---
-      res.json(parsed);
+      // 5) クライアントに返却
+      res.json({ file: gcsName, structured, stein: "ok" });
     } catch (err: any) {
       console.error(err);
-      res.status(500).json({ error: err.message });
+      res.status(500).json({ error: err.message, stack: err.stack });
     }
   }
 );
