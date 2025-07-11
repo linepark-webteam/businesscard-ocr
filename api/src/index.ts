@@ -1,4 +1,4 @@
-// C:\Users\Lenovo\shusei-bizcard-web\api\src\index.ts
+// /api/src/index.ts
 import express from 'express';
 import cors from 'cors';  // 追加
 import ocrRouter from './ocr.js';
