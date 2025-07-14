@@ -55,7 +55,17 @@ router.post("/", upload.single("image"), async (req, res) => {
       {
         role: "system",
         content:
-          "以下のテキストを JSON でパースして、氏名・会社名・電話番号などのフィールドに切り分けてください。",
+          `名刺からOCRで抽出したテキストを受け取り、必ず以下のJSONを返してください。` +
+          `\n` +
+          `{\n` +
+          `  "name": "<氏名>",\n` +
+          `  "furigana": "<フリガナ>",\n` +
+          `  "company": "<会社名>",\n` +
+          `  "address": "<住所>",\n` +
+          `  "tel": "<電話番号>",\n` +
+          `  "mail": "<メールアドレス>",\n` +
+          `  "industry": "<業種>"\n` +
+          `}`,
       },
       { role: "user", content: text },
     ];
@@ -73,7 +83,13 @@ router.post("/", upload.single("image"), async (req, res) => {
     // 4) Stein に保存
     const record = {
       timestamp,
-      ...structured,
+      name: structured.name,
+      furigana: structured.furigana,
+      company: structured.company,
+      address: structured.address,
+      tel: structured.tel,
+      mail: structured.mail,
+      industry: structured.industry,
       raw_json: JSON.stringify({ file: gcsName, text }),
     };
     await axios.post(STEIN_ENDPOINT, [record], {
