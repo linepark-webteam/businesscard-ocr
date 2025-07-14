@@ -127,7 +127,7 @@ export default function UploadClient() {
         <div key={r.file + idx} className="mb-8">
           <h2 className="font-semibold mb-2">{r.file}</h2>
           <pre className="bg-white dark:bg-gray-800 text-black dark:text-gray-100 p-4 rounded whitespace-pre-wrap">
-            <ul className="bg-white  dark:bg-gray-800 text-black dark:text-gray-100 p-4 rounded">
+            <ul className="bg-white p-4 rounded">
               <li>氏名: {r.structured.name}</li>
               <li>フリガナ: {r.structured.furigana}</li>
               <li>会社名: {r.structured.company}</li>
