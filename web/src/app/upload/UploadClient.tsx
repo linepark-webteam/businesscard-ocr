@@ -1,13 +1,20 @@
 // web/src/app/upload/UploadClient.tsx
-'use client';
+"use client";
 
-import { useState, useCallback, useEffect } from 'react';
-import { useDropzone } from 'react-dropzone';
+import { useState, useCallback, useEffect } from "react";
+import { useDropzone } from "react-dropzone";
 
 interface OcrResult {
   file: string;
-  text: string;
-  pages: unknown[];
+  structured: {
+    name: string;
+    furigana: string;
+    company: string;
+    address: string;
+    tel: string;
+    mail: string;
+    industry: string;
+  };
 }
 
 export default function UploadClient() {
@@ -19,21 +26,21 @@ export default function UploadClient() {
 
   /* ---------- drop ---------- */
   const onDrop = useCallback((accepted: File[]) => {
-    const newUrls = accepted.map(f => URL.createObjectURL(f));
-    setFiles(prev => [...prev, ...accepted]);
-    setPreviews(prev => [...prev, ...newUrls]);
+    const newUrls = accepted.map((f) => URL.createObjectURL(f));
+    setFiles((prev) => [...prev, ...accepted]);
+    setPreviews((prev) => [...prev, ...newUrls]);
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: { 'image/*': [] },
+    accept: { "image/*": [] },
     multiple: true,
   });
 
   /* ---------- cleanup blob URLs on unmount or when previews change ---------- */
   useEffect(() => {
     return () => {
-      previews.forEach(u => URL.revokeObjectURL(u));
+      previews.forEach((u) => URL.revokeObjectURL(u));
     };
   }, [previews]);
 
@@ -43,15 +50,20 @@ export default function UploadClient() {
     setLoading(true);
     try {
       const API = process.env.NEXT_PUBLIC_API_BASE_URL;
-      if (!API) throw new Error('NEXT_PUBLIC_API_BASE_URL が未設定です');
+      if (!API) throw new Error("NEXT_PUBLIC_API_BASE_URL が未設定です");
 
       const resArr = await Promise.all(
-        files.map(async f => {
+        files.map(async (f) => {
           const fd = new FormData();
-          fd.append('image', f);
-          const r = await fetch(`${API}/ocr`, { method: 'POST', body: fd });
+          fd.append("image", f);
+          const r = await fetch(`${API}/ocr`, { method: "POST", body: fd });
           if (!r.ok) throw new Error(`failed: ${f.name}`);
-          return (await r.json()) as OcrResult;
+          const json = await r.json();
+          // もともと { file, structured, stein } を返しているはずなので
+          return {
+            file: json.file,
+            structured: json.structured,
+          } as OcrResult;
         })
       );
       setResults(resArr);
@@ -60,7 +72,7 @@ export default function UploadClient() {
         alert(e.message);
         console.error(e);
       } else {
-        alert('予期しないエラーが発生しました');
+        alert("予期しないエラーが発生しました");
         console.error(e);
       }
     } finally {
@@ -74,13 +86,13 @@ export default function UploadClient() {
       <div
         {...getRootProps()}
         className={`border-2 border-dashed p-8 text-center mb-6 cursor-pointer ${
-          isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-400'
+          isDragActive ? "border-blue-500 bg-blue-50" : "border-gray-400"
         }`}
       >
         <input {...getInputProps()} />
         {isDragActive
-          ? 'ここにドロップしてください'
-          : 'クリックまたはドラッグ＆ドロップで画像を選択'}
+          ? "ここにドロップしてください"
+          : "クリックまたはドラッグ＆ドロップで画像を選択"}
       </div>
 
       {previews.length > 0 && (
@@ -108,7 +120,7 @@ export default function UploadClient() {
         disabled={loading || !files.length}
         className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-6 py-2 rounded mb-8"
       >
-        {loading ? 'アップロード中…' : 'アップロード開始'}
+        {loading ? "アップロード中…" : "アップロード開始"}
       </button>
 
       {results.map((r, idx) => (
